@@ -1,0 +1,19 @@
+all: false
+with-expecter: true
+mockname: "Mock{{.InterfaceName}}"
+
+filename: "mock_{{.InterfaceName | snakecase}}.go"
+
+packages:
+  pht/pet/link_shortener/internal/service:
+    config:
+      dir: internal/mocks
+      outpkg: mocks
+    interfaces:
+      URLRepository:
+  pht/pet/link_shortener/internal/handler:
+    config:
+      dir: internal/mocks
+      outpkg: mocks
+    interfaces:
+      LinkSaverGetter:

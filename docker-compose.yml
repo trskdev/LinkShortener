@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # DB: PostgreSQL
+  postgres-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PWD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # cache: Redis
+  redis-cache:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # app: Go
+  link-shortener:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: link-shortener-local:latest
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+  # migrations
+  migrations:
+    image: link-shortener-local:latest
+    env_file:
+      - .env
+    command: sh -c "migrate -path ./migrations -database \$$DATABASE_URL up"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
